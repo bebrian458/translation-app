@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Song Ngữ — Personal Interpreter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;600;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d131c;
+    --panel: #141c28;
+    --panel-2: #18212f;
+    --line: #232e3f;
+    --text: #e9edf2;
+    --muted: #8a94a6;
+    --vn: #f2b84b;
+    --vn-dim: rgba(242,184,75,.14);
+    --en: #5fc9a9;
+    --en-dim: rgba(95,201,169,.14);
+    --mix: #b48ce8;
+    --mix-dim: rgba(180,140,232,.14);
+    --live: #e4604e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink);
+    color: var(--text);
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* ---------- header ---------- */
+  header {
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .brand .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .brand h1 { font-size: 20px; font-weight: 800; line-height: 1.1; }
+  .brand h1 .accent { color: var(--vn); }
+  .direction {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 8px;
+  }
+  .lang-chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    padding: 5px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .lang-chip.vn { color: var(--vn); background: var(--vn-dim); }
+  .lang-chip.en { color: var(--en); background: var(--en-dim); }
+  .swap-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    transition: color .15s, transform .25s;
+  }
+  .swap-btn:hover, .swap-btn:focus-visible { color: var(--text); }
+  .swap-btn:focus-visible { outline: 2px solid var(--en); outline-offset: 2px; }
+  .swap-btn.spin { transform: rotate(180deg); }
+  @media (prefers-reduced-motion: reduce) { .swap-btn { transition: none; } }
+
+  /* ---------- status ---------- */
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 18px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+    min-height: 32px;
+    flex-wrap: wrap;
+  }
+  .dot {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; background: var(--muted);
+    margin-right: 6px; vertical-align: 1px;
+  }
+  .dot.live { background: var(--live); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .dot.live { animation: none; } }
+
+  /* ---------- live stage ---------- */
+  .stage {
+    flex-shrink: 0;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--panel) 0%, var(--ink) 100%);
+  }
+  .stage .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .mix-chip {
+    font-size: 8.5px;
+    letter-spacing: .12em;
+    color: var(--mix);
+    background: var(--mix-dim);
+    padding: 2px 8px;
+    border-radius: 999px;
+    display: none;
+  }
+  .mix-chip.show { display: inline-block; }
+  .hearing .label { color: var(--muted); }
+  .hearing .text {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.35;
+    max-height: 74px;
+    overflow-y: auto;
+    word-break: break-word;
+  }
+  .rendering { margin-top: 11px; }
+  .rendering .text {
+    font-size: 19px;
+    font-weight: 400;
+    line-height: 1.4;
+    max-height: 106px;
+    overflow-y: auto;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .placeholder { color: var(--muted); font-weight: 300; font-size: 14.5px; }
+  .lang-tint-vn { color: var(--vn); }
+  .lang-tint-en { color: var(--en); }
+
+  /* ---------- transcript ---------- */
+  .transcript {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scroll-behavior: smooth;
+  }
+  .pair {
+    border-left: 3px solid var(--line);
+    padding: 8px 12px;
+    background: var(--panel);
+    border-radius: 0 10px 10px 0;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .pair:hover { background: var(--panel-2); }
+  .pair.from-vn { border-left-color: var(--vn); }
+  .pair.from-en { border-left-color: var(--en); }
+  .pair.from-mix { border-left-color: var(--mix); }
+  .pair .dst {
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .pair .dst.pending { color: var(--muted); font-style: italic; font-weight: 300; }
+  .pair .src {
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 300;
+    line-height: 1.4;
+    color: var(--muted);
+    word-break: break-word;
+  }
+  .pair .meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-top: 6px;
+    opacity: .75;
+  }
+  .pair .meta .mix-flag { color: var(--mix); }
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    font-weight: 300;
+    font-size: 14px;
+    line-height: 1.7;
+    max-width: 320px;
+  }
+  .empty-state .big { font-size: 32px; margin-bottom: 8px; }
+
+  /* ---------- controls ---------- */
+  .controls {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 14px 18px calc(16px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+  }
+  .ctl {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 14px;
+    width: 52px; height: 52px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ctl:hover, .ctl:focus-visible { color: var(--text); border-color: var(--muted); }
+  .ctl:focus-visible { outline: 2px solid var(--en); outline-offset: 2px; }
+  .ctl.on { color: var(--en); border-color: var(--en); background: var(--en-dim); }
+  .mic {
+    width: 74px; height: 74px;
+    border-radius: 50%;
+    border: none;
+    background: var(--text);
+    color: var(--ink);
+    font-size: 28px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s;
+    box-shadow: 0 4px 18px rgba(0,0,0,.4);
+  }
+  .mic:focus-visible { outline: 3px solid var(--en); outline-offset: 3px; }
+  .mic.live {
+    background: var(--live);
+    color: #fff;
+    animation: ring 1.6s ease-out infinite;
+  }
+  @keyframes ring {
+    0% { box-shadow: 0 0 0 0 rgba(228,96,78,.45); }
+    100% { box-shadow: 0 0 0 22px rgba(228,96,78,0); }
+  }
+  @media (prefers-reduced-motion: reduce) { .mic.live { animation: none; } }
+
+  /* ---------- toast / blocker ---------- */
+  .toast {
+    position: fixed;
+    left: 50%; bottom: 120px;
+    transform: translateX(-50%);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 13px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    max-width: 88vw;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s;
+    z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+  .blocker {
+    position: fixed; inset: 0;
+    background: var(--ink);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 30px;
+    z-index: 100;
+    text-align: center;
+  }
+  .blocker.show { display: flex; }
+  .blocker .inner { max-width: 420px; line-height: 1.7; font-weight: 300; }
+  .blocker h2 { font-weight: 800; margin-bottom: 10px; }
+
+  @media (min-width: 720px) {
+    .hearing .text { font-size: 21px; }
+    .rendering .text { font-size: 24px; }
+    .transcript { padding: 18px 14vw; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="eyebrow">personal interpreter</div>
+    <h1>Song <span class="accent">Ngữ</span></h1>
+  </div>
+  <div class="direction" role="group" aria-label="Translation direction">
+    <span class="lang-chip vn" id="chipFrom">Tiếng Việt</span>
+    <button class="swap-btn" id="swapBtn" title="Swap direction" aria-label="Swap translation direction">⇄</button>
+    <span class="lang-chip en" id="chipTo">English</span>
+  </div>
+</header>
+
+<div class="status">
+  <span><span class="dot" id="micDot"></span><span id="micStatusText">mic off</span></span>
+  <span><span class="dot"></span><span id="engineStatusText">translator: checking…</span></span>
+  <span id="seamStatus" style="display:none"><span class="dot"></span><span id="seamStatusText"></span></span>
+</div>
+
+<div class="stage">
+  <div class="hearing">
+    <div class="label" id="hearingLabel">Hearing · Tiếng Việt <span class="mix-chip" id="mixChip">MIXED</span></div>
+    <div class="text lang-tint-vn" id="hearingText"><span class="placeholder">Tap the mic to start listening…</span></div>
+  </div>
+  <div class="rendering">
+    <div class="label lang-tint-en" id="renderingLabel">For you · English</div>
+    <div class="text" id="renderingText"><span class="placeholder">Live translation streams here — it keeps up even through long, nonstop speech.</span></div>
+  </div>
+</div>
+
+<div class="transcript" id="transcript">
+  <div class="empty-state" id="emptyState">
+    <div class="big">🎧</div>
+    This device translates one way — set the direction above for
+    whoever's holding it. Finished sentences land here, translation
+    first. Mixed Việt-English sentences are untangled automatically.<br>
+    Tap any entry to hear it again.
+  </div>
+</div>
+
+<div class="controls">
+  <button class="ctl" id="clearBtn" title="Clear transcript" aria-label="Clear transcript">🗑</button>
+  <button class="mic" id="micBtn" aria-label="Start listening">🎙</button>
+  <button class="ctl" id="ttsBtn" title="Speak translations aloud" aria-label="Toggle spoken translation">🔊</button>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<div class="blocker" id="blocker">
+  <div class="inner">
+    <h2>Browser not supported</h2>
+    <p>This prototype relies on the Web Speech API, which isn't available in this
+    browser. Open it in <strong>Chrome or Edge</strong> on desktop or Android, served
+    over <strong>https:// or localhost</strong> (not file://) so the microphone works.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ================= language detection & segmentation =================
+  const VI_CHARS = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+  const EN_STOP = new Set(('the a an is are was were am be been i you we they he she it its to of and in on at ' +
+    'that this these have has had for with but not so do does did what when where why how who can could will ' +
+    'would should just like ok okay yeah yes no my your our their his her about from there here now then if ' +
+    'because want need know think go going get got make said say see really very right all some more').split(' '));
+  const VI_STOP = new Set(['là','không','của','và','được','có','cho','một','người','mình','em','anh','chị','thì',
+    'cũng','rồi','nha','nhé','ạ','dạ','tôi','bạn','chúng','này','đó','đi','làm','nói','biết','muốn','cần','phải',
+    'về','trong','với','như','nhưng','hay','hoặc','ơi','nè','vậy','sao','gì','ai','đâu','nào','bây','giờ','hôm',
+    'nay','mai','con','cái','những','các','để','đã','sẽ','đang','mà','nữa','lại','ra','vào','lên','xuống',
+    'ta','hai','bao','nhiêu','ông','bà','cô','chú','xin','chào','cảm','ơn']);
+
+  function cleanToken(w) { return w.toLowerCase().replace(/[.,!?;:"“”‘’()]/g, ''); }
+  function classifyToken(w) {
+    const t = cleanToken(w);
+    if (!t) return null;
+    if (VI_CHARS.test(t) || VI_STOP.has(t)) return 'vi';
+    if (EN_STOP.has(t)) return 'en';
+    if (/^[a-z0-9'-]+$/.test(t)) return 'en?';
+    return null;
+  }
+  function detectMixed(text, srcLang) {
+    let vi = 0, en = 0, weak = 0, total = 0;
+    for (const w of text.split(/\s+/)) {
+      const c = classifyToken(w);
+      if (!c) continue;
+      total++;
+      if (c === 'vi') vi++;
+      else if (c === 'en') en++;
+      else weak++;
+    }
+    if (!total) return false;
+    // "Other language" presence relative to the expected source language.
+    // When listening in Vietnamese, ambiguous ASCII counts toward English;
+    // when listening in English, only diacritic/stopword hits count as Việt.
+    if (srcLang === 'vi') return (en + weak) >= 2 && (en + weak) / total >= 0.15 && vi >= 1;
+    return vi >= 2 && vi / total >= 0.15 && (en + weak) >= 1;
+  }
+  function segmentRuns(text) {
+    let runs = [];
+    for (const w of text.split(/\s+/)) {
+      if (!w) continue;
+      const raw = classifyToken(w);
+      const weak = raw === 'en?' || raw === null;
+      const c = raw === 'vi' ? 'vi' : 'en';
+      const last = runs[runs.length - 1];
+      if (last && last.lang === c) { last.words.push(w); last.weak = last.weak && weak; }
+      else runs.push({ lang: c, words: [w], weak });
+    }
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 1; i < runs.length - 1; i++) {
+        const r = runs[i], a = runs[i - 1], b = runs[i + 1];
+        const shortSingle = r.words.length === 1 && cleanToken(r.words[0]).length <= 4;
+        if (r.weak && shortSingle && a.lang === b.lang && a.lang !== r.lang) {
+          r.lang = a.lang;
+          changed = true;
+        }
+      }
+      const merged = [];
+      for (const r of runs) {
+        const last = merged[merged.length - 1];
+        if (last && last.lang === r.lang) { last.words.push(...r.words); last.weak = last.weak && r.weak; }
+        else merged.push(r);
+      }
+      if (merged.length !== runs.length) changed = true;
+      runs = merged;
+    }
+    return runs.map(r => ({ lang: r.lang, text: r.words.join(' ') }));
+  }
+
+  // ================= state =================
+  const LANGS = {
+    vi: { code: 'vi', speech: 'vi-VN', label: 'Tiếng Việt', cls: 'vn' },
+    en: { code: 'en', speech: 'en-US', label: 'English', cls: 'en' },
+  };
+  const state = {
+    from: 'vi',
+    to: 'en',
+    listening: false,
+    wantListening: false,
+    tts: false,
+    ttsQueued: 0,
+    interim: '',
+    interimSeq: 0,
+    interimTimer: null,
+    translators: {},
+    engine: null,
+    wakeLock: null,
+    // long-speech session management
+    sessionStartedAt: 0,
+    listenStartedAt: 0,
+    seams: 0,
+    quickDeaths: 0,        // sessions that died almost immediately (real errors)
+    timerInterval: null,
+  };
+
+  const $ = id => document.getElementById(id);
+  const els = {
+    chipFrom: $('chipFrom'), chipTo: $('chipTo'), swapBtn: $('swapBtn'),
+    micDot: $('micDot'), micStatusText: $('micStatusText'),
+    engineStatusText: $('engineStatusText'),
+    seamStatus: $('seamStatus'), seamStatusText: $('seamStatusText'),
+    hearingLabel: $('hearingLabel'), hearingText: $('hearingText'),
+    renderingLabel: $('renderingLabel'), renderingText: $('renderingText'),
+    mixChip: $('mixChip'),
+    transcript: $('transcript'), emptyState: $('emptyState'),
+    micBtn: $('micBtn'), ttsBtn: $('ttsBtn'), clearBtn: $('clearBtn'),
+    toast: $('toast'), blocker: $('blocker'),
+  };
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { els.blocker.classList.add('show'); return; }
+
+  let toastTimer;
+  function toast(msg, ms = 3200) {
+    els.toast.textContent = msg;
+    els.toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => els.toast.classList.remove('show'), ms);
+  }
+
+  // ================= translation =================
+  async function getTranslator(from, to) {
+    const key = from + '>' + to;
+    if (state.translators[key]) return state.translators[key];
+    if (!('Translator' in self)) return null;
+    try {
+      const avail = await Translator.availability({ sourceLanguage: from, targetLanguage: to });
+      if (avail === 'unavailable') return null;
+      if (avail !== 'available') toast('Downloading on-device translation model…');
+      const t = await Translator.create({
+        sourceLanguage: from, targetLanguage: to,
+        monitor(m) {
+          m.addEventListener('downloadprogress', e => {
+            els.engineStatusText.textContent =
+              'translator: downloading ' + Math.round(e.loaded * 100) + '%';
+          });
+        },
+      });
+      state.translators[key] = t;
+      return t;
+    } catch (e) { return null; }
+  }
+  function setEngine(kind) {
+    if (state.engine === kind) return;
+    state.engine = kind;
+    els.engineStatusText.textContent =
+      kind === 'on-device' ? 'translator: on-device ✓' : 'translator: online fallback';
+  }
+  async function translate(text, from, to) {
+    if (!text.trim()) return '';
+    const t = await getTranslator(from, to);
+    if (t) { setEngine('on-device'); return await t.translate(text); }
+    setEngine('online');
+    const url = 'https://api.mymemory.translated.net/get?q=' +
+      encodeURIComponent(text.slice(0, 480)) + '&langpair=' + from + '|' + to;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('translation request failed');
+    const json = await res.json();
+    const out = json?.responseData?.translatedText;
+    if (!out) throw new Error('empty translation');
+    return out;
+  }
+
+  // Render any utterance fully into the target language, untangling mixes.
+  async function toTarget(text) {
+    const from = state.from, to = state.to;
+    if (!detectMixed(text, from)) return await translate(text, from, to);
+    try {
+      const parts = [];
+      for (const r of segmentRuns(text)) {
+        parts.push(r.lang === to ? r.text : await translate(r.text, r.lang, to));
+      }
+      return parts.join(' ');
+    } catch (e) {
+      return await translate(text, from, to);
+    }
+  }
+
+  (async () => {
+    const t = await getTranslator(state.from, state.to);
+    setEngine(t ? 'on-device' : 'online');
+  })();
+
+  // ================= text-to-speech with catch-up =================
+  let voices = [];
+  function loadVoices() { voices = speechSynthesis.getVoices(); }
+  loadVoices();
+  if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = loadVoices;
+
+  // Real-time policy: never fall more than one utterance behind. If the
+  // speaker is nonstop and audio can't keep up, drop the backlog and speak
+  // the newest segment. Captions always have the full record.
+  function speakSmart(text, langCode) {
+    if (!state.tts || !text) return;
+    if (speechSynthesis.speaking && state.ttsQueued >= 1) {
+      speechSynthesis.cancel();
+      state.ttsQueued = 0;
+    }
+    const u = new SpeechSynthesisUtterance(text);
+    const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode));
+    if (match) u.voice = match;
+    u.lang = LANGS[langCode].speech;
+    u.rate = 1.12;   // slightly brisk so audio keeps pace with live speech
+    state.ttsQueued++;
+    const done = () => { state.ttsQueued = Math.max(0, state.ttsQueued - 1); };
+    u.onend = done; u.onerror = done;
+    speechSynthesis.speak(u);
+  }
+  function speakOnce(text, langCode) {
+    const u = new SpeechSynthesisUtterance(text);
+    const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode));
+    if (match) u.voice = match;
+    u.lang = LANGS[langCode].speech;
+    u.rate = 1.05;
+    speechSynthesis.speak(u);
+  }
+
+  // ================= recognizer: seam-optimized for long speech =================
+  let rec = null;
+
+  function buildRecognizer() {
+    const r = new SR();
+    r.lang = LANGS[state.from].speech;
+    r.continuous = true;
+    r.interimResults = true;
+
+    r.onresult = (ev) => {
+      let interim = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (res.isFinal) finalizeUtterance(res[0].transcript.trim());
+        else interim += res[0].transcript;
+      }
+      state.interim = interim.trim();
+      if (state.interim) renderInterim();
+    };
+
+    r.onstart = () => {
+      state.listening = true;
+      state.sessionStartedAt = Date.now();
+      if (!state.listenStartedAt) {
+        state.listenStartedAt = Date.now();
+        state.seams = 0;
+        startTimer();
+      }
+      els.micDot.classList.add('live');
+      els.micBtn.classList.add('live');
+      els.micBtn.textContent = '⏸';
+      els.micBtn.setAttribute('aria-label', 'Stop listening');
+      paintTimer();
+    };
+
+    r.onend = () => {
+      state.listening = false;
+      if (!state.wantListening) { setMicOffUI(); return; }
+
+      // Chrome ends long sessions on its own — reconnect at the seam fast.
+      const lived = Date.now() - state.sessionStartedAt;
+      if (lived < 1000) {
+        // Session died immediately: a real problem (mic/network), back off
+        state.quickDeaths++;
+        const delay = Math.min(300 * Math.pow(2, state.quickDeaths), 4000);
+        setTimeout(() => { if (state.wantListening) startRec(); }, delay);
+        if (state.quickDeaths === 4) toast('Having trouble keeping the mic session alive — check your connection.');
+      } else {
+        state.quickDeaths = 0;
+        state.seams++;
+        paintSeams();
+        setTimeout(() => { if (state.wantListening) startRec(); }, 60);
+      }
+    };
+
+    r.onerror = (ev) => {
+      if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+        state.wantListening = false;
+        setMicOffUI();
+        toast('Microphone blocked. Allow mic access in the address bar, then try again.');
+      } else if (ev.error === 'network') {
+        toast('Speech service needs a network connection.');
+      }
+      // 'no-speech' / 'aborted' are routine; onend handles reconnection
+    };
+    return r;
+  }
+
+  function startRec() {
+    try { rec = buildRecognizer(); rec.start(); } catch (e) {}
+  }
+  function stopRec() {
+    state.wantListening = false;
+    if (rec) try { rec.stop(); } catch (e) {}
+    setMicOffUI();
+  }
+  function setMicOffUI() {
+    els.micDot.classList.remove('live');
+    els.micStatusText.textContent = 'mic off';
+    els.micBtn.classList.remove('live');
+    els.micBtn.textContent = '🎙';
+    els.micBtn.setAttribute('aria-label', 'Start listening');
+    stopTimer();
+    state.listenStartedAt = 0;
+  }
+
+  // Session timer + seam counter (confidence that long listening is alive)
+  function paintTimer() {
+    if (!state.listenStartedAt) return;
+    const s = Math.floor((Date.now() - state.listenStartedAt) / 1000);
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    els.micStatusText.textContent = 'listening ' + mm + ':' + ss;
+  }
+  function paintSeams() {
+    if (state.seams > 0) {
+      els.seamStatus.style.display = '';
+      els.seamStatusText.textContent = 'reconnects: ' + state.seams;
+    }
+  }
+  function startTimer() {
+    stopTimer();
+    state.timerInterval = setInterval(paintTimer, 1000);
+  }
+  function stopTimer() {
+    if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+  }
+
+  // ================= live stage =================
+  const LIVE_TAIL = 260;  // translate only the rolling tail of long interims
+
+  function tailOf(text) {
+    if (text.length <= LIVE_TAIL) return text;
+    const cut = text.slice(text.length - LIVE_TAIL);
+    const sp = cut.indexOf(' ');
+    return sp > 0 ? cut.slice(sp + 1) : cut;
+  }
+
+  function renderInterim() {
+    const seq = ++state.interimSeq;
+    els.hearingText.textContent = state.interim;
+    els.hearingText.scrollTop = els.hearingText.scrollHeight;
+    els.mixChip.classList.toggle('show', detectMixed(state.interim, state.from));
+
+    clearTimeout(state.interimTimer);
+    state.interimTimer = setTimeout(async () => {
+      const snapshot = state.interim;
+      if (!snapshot || seq !== state.interimSeq) return;
+      try {
+        const out = await toTarget(tailOf(snapshot));
+        if (seq === state.interimSeq && state.interim === snapshot) {
+          els.renderingText.textContent = out;
+          els.renderingText.scrollTop = els.renderingText.scrollHeight;
+        }
+      } catch (e) { /* best effort */ }
+    }, 400);
+  }
+
+  // ================= transcript =================
+  async function finalizeUtterance(src) {
+    if (!src) return;
+    state.interim = '';
+    els.hearingText.textContent = src;
+    els.hearingText.scrollTop = els.hearingText.scrollHeight;
+
+    const mixed = detectMixed(src, state.from);
+    els.mixChip.classList.toggle('show', mixed);
+
+    els.emptyState.style.display = 'none';
+    const pair = document.createElement('div');
+    pair.className = 'pair from-' + (mixed ? 'mix' : LANGS[state.from].cls);
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    pair.innerHTML =
+      '<div class="dst pending">translating…</div>' +
+      '<div class="src"></div>' +
+      '<div class="meta">' +
+        (mixed ? '<span class="mix-flag">MIXED</span> · ' : '') +
+        LANGS[state.from].label.toUpperCase() + ' → ' + LANGS[state.to].label.toUpperCase() +
+        ' · ' + time + '</div>';
+    pair.querySelector('.src').textContent = src;
+    els.transcript.appendChild(pair);
+    els.transcript.scrollTop = els.transcript.scrollHeight;
+
+    try {
+      const dst = await toTarget(src);
+      const dstEl = pair.querySelector('.dst');
+      dstEl.textContent = dst;
+      dstEl.classList.remove('pending');
+      els.renderingText.textContent = dst;
+      els.transcript.scrollTop = els.transcript.scrollHeight;
+      speakSmart(dst, state.to);
+      pair.addEventListener('click', () => speakOnce(dst, state.to));
+    } catch (e) {
+      const dstEl = pair.querySelector('.dst');
+      dstEl.textContent = '⚠ translation failed — check connection';
+      dstEl.classList.remove('pending');
+    }
+  }
+
+  // ================= direction / labels =================
+  function paintDirection() {
+    const f = LANGS[state.from], t = LANGS[state.to];
+    els.chipFrom.textContent = f.label;
+    els.chipFrom.className = 'lang-chip ' + f.cls;
+    els.chipTo.textContent = t.label;
+    els.chipTo.className = 'lang-chip ' + t.cls;
+    els.hearingLabel.childNodes[0].textContent = 'Hearing · ' + f.label + ' ';
+    els.hearingText.className = 'text lang-tint-' + f.cls;
+    els.renderingLabel.textContent = 'For you · ' + t.label;
+    els.renderingLabel.className = 'label lang-tint-' + t.cls;
+  }
+
+  // ================= wake lock =================
+  async function holdWakeLock() {
+    try { if ('wakeLock' in navigator) state.wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+  }
+  function releaseWakeLock() { state.wakeLock?.release?.(); state.wakeLock = null; }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.wantListening) holdWakeLock();
+  });
+
+  // ================= events =================
+  els.micBtn.addEventListener('click', () => {
+    if (state.wantListening) {
+      stopRec(); releaseWakeLock();
+    } else {
+      state.wantListening = true;
+      state.quickDeaths = 0;
+      els.hearingText.innerHTML = '<span class="placeholder">Listening…</span>';
+      startRec(); holdWakeLock();
+    }
+  });
+
+  els.swapBtn.addEventListener('click', () => {
+    [state.from, state.to] = [state.to, state.from];
+    els.swapBtn.classList.toggle('spin');
+    paintDirection();
+    els.renderingText.innerHTML = '<span class="placeholder">Live translation streams here.</span>';
+    getTranslator(state.from, state.to).then(t => setEngine(t ? 'on-device' : 'online'));
+    if (state.wantListening && rec) {
+      try { rec.stop(); } catch (e) {}   // onend restarts in the new language
+    } else if (!state.wantListening) {
+      els.hearingText.innerHTML = '<span class="placeholder">Tap the mic to start listening…</span>';
+    }
+  });
+
+  els.ttsBtn.addEventListener('click', () => {
+    state.tts = !state.tts;
+    els.ttsBtn.classList.toggle('on', state.tts);
+    if (!state.tts) speechSynthesis.cancel();
+    toast(state.tts
+      ? 'Speaking ' + LANGS[state.to].label + ' to you — use earbuds so the mic doesn\'t hear it. During nonstop speech it skips ahead to stay live.'
+      : 'Spoken translation off — captions only.', 4200);
+  });
+
+  els.clearBtn.addEventListener('click', () => {
+    els.transcript.querySelectorAll('.pair').forEach(p => p.remove());
+    els.emptyState.style.display = '';
+    els.seamStatus.style.display = 'none';
+    state.seams = 0;
+  });
+
+  paintDirection();
+})();
+</script>
+</body>
+</html>
